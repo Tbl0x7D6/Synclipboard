@@ -1,16 +1,18 @@
-import express from 'express';
-import cors from 'cors';
+import express from "express";
+import bodyParser from "body-parser";
+import cors from "cors";
+
+const port = Number(process.env.PORT);
+const hostname = process.env.HOSTNAME as string;
+const maxFileSize = Number(process.env.MAX_FILE_SIZE);
 
 const app = express();
 app.use(cors());
-app.use(express.json());
-
-app.get('/', (req, res) => {
-    res.send('Hello World!');
-});
+app.use(bodyParser.json({limit: maxFileSize}));
 
 require('./http/clipboard-push')(app);
+require('./http/clipboard-pull')(app);
 
-app.listen(3000, '0.0.0.0', () => {
+app.listen(port, hostname, () => {
     console.log('Server is running on port 3000');
 });
