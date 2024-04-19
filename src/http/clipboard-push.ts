@@ -1,4 +1,4 @@
-import { Express, Request, Response, NextFunction } from "express";
+import { Express, Request, Response } from "express";
 import { checkSchema, validationResult } from 'express-validator';
 import fs from "fs";
 import Zip from "adm-zip";
@@ -9,7 +9,17 @@ import { exec } from "child_process";
 module.exports = (app: Express) => app.post('/clipboard-push', checkSchema({
     platform: {
         in: ['body'],
-        isString: true
+        isString: true,
+        isIn: {
+            options: [['ios', 'wayland']]
+        }
+    },
+    mime: {
+        in: ['body'],
+        isString: true,
+        isIn: {
+            options: [['txt', 'png', 'undefined']]
+        }
     },
     data: {
         in: ['body'],
@@ -18,10 +28,13 @@ module.exports = (app: Express) => app.post('/clipboard-push', checkSchema({
 }), async (req: Request, res: Response) => {
     if (!validationResult(req).isEmpty()) {
         res.status(400).send('Invalid request');
+        console.log('Invalid request');
         return;
     }
 
-    const {platform, data} = req.body;
+    const platform: string = req.body.platform;
+    const mime: string = req.body.mime;
+    const data: string = req.body.data;
 
     // parse data for different platforms
     if (platform === 'ios') {
@@ -33,9 +46,9 @@ module.exports = (app: Express) => app.post('/clipboard-push', checkSchema({
             const extensionName = entryName.split('.').pop();
             zip.extractAllTo('.', true);
 
-            // parse data for different file types
+            // parse data for different file mimes
             if (extensionName === 'rtf') {
-                new LocalStorage('type').setItem('type', 'txt');
+                new LocalStorage('mime').setItem('mime', 'txt');
                 // need catdoc CLI tool installed
                 exec(`catdoc -d unicode ${entryName}`, (error, stdout, stderr) => {
                     if (error) {
@@ -44,11 +57,11 @@ module.exports = (app: Express) => app.post('/clipboard-push', checkSchema({
                     fs.writeFileSync('clipboard.txt', stdout.trim(), 'utf8');
                 });
             } else if (extensionName === 'txt') {
-                new LocalStorage('type').setItem('type', 'txt');
+                new LocalStorage('mime').setItem('mime', 'txt');
             } else if (extensionName === 'png') {
-                new LocalStorage('type').setItem('type', 'png');
+                new LocalStorage('mime').setItem('mime', 'png');
             } else if (extensionName === 'heic') {
-                new LocalStorage('type').setItem('type', 'png');
+                new LocalStorage('mime').setItem('mime', 'png');
                 const inputBuffer = fs.readFileSync(entryName);
                 const outputBuffer = await convert({
                     buffer: inputBuffer,
@@ -56,8 +69,21 @@ module.exports = (app: Express) => app.post('/clipboard-push', checkSchema({
                 });
                 fs.writeFileSync('clipboard.png', Buffer.from(outputBuffer));
             } else {
-                throw new Error('Unsupported file type');
+                throw new Error('Unsupported file mime');
             }
+        } catch (error) {
+            console.log(error);
+            res.status(500).send(error);
+            return;
+        }
+    } else if (platform === 'wayland') {
+        try {
+            if (mime === 'undefined') {
+                throw new Error('Unsupported file mime');
+            }
+            // BUG: need trim operation!
+            fs.writeFileSync(`clipboard.${mime}`, data, 'base64');
+            new LocalStorage('mime').setItem('mime', mime);
         } catch (error) {
             console.log(error);
             res.status(500).send(error);
