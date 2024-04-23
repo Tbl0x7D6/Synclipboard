@@ -5,6 +5,7 @@
 # this script will only upload once it is executed, you can manually set hotkey in your
 # desktop environment settings.
 
+import sys
 import subprocess
 # pip install requests
 import requests
@@ -41,7 +42,6 @@ def send_data(hostname: str, port: int, encoded_data: str, mime: str) -> None:
     }
     response = requests.post(url, json=data)
     if response.status_code != 200:
-        print('')
         notification.notify(
             title = 'Synclipboard',
             message = 'Failed to send data to synclipboard server.',
@@ -66,5 +66,36 @@ def upload():
         encoded_data = base64_encode(content)
         send_data(hostname, port, encoded_data, mime)
 
+def download():
+    response = requests.post(f'http://{hostname}:{port}/clipboard-pull', json={'platform': 'wayland'})
+    if response.status_code != 200:
+        notification.notify(
+            title = 'Synclipboard',
+            message = 'Failed to get data from synclipboard server.',
+            timeout = 5
+        )
+    else:
+        data = response.json()
+        mime = data['mime']
+        if mime == 'txt':
+            subprocess.run(["wl-copy", "--type=text/plain;charset=utf-8", data['data']])
+        elif mime == 'png':
+            content = base64.b64decode(data['data'])
+            subprocess.run(["wl-copy", "--type=image/png"], input=content)
+        notification.notify(
+            title = 'Synclipboard',
+            message = 'Download clipboard success.',
+            timeout = 2
+        )
+
 if __name__ == '__main__':
-    upload()
+    if len(sys.argv) != 2:
+        print('Usage: python wayland.py [upload|download]')
+        sys.exit(1)
+    if sys.argv[1] == 'upload':
+        upload()
+    elif sys.argv[1] == 'download':
+        download()
+    else:
+        print('Usage: python wayland.py [upload|download]')
+        sys.exit(1)

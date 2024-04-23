@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "start": "cd dist; node --env-file .env ./app.js"
+    "dev": "cd dist; node --env-file .env ./app.js",
+    "start": "node ./dist/app.js",
+    "build": "tsc"
   },
   "dependencies": {
     "@types/adm-zip": "^0.5.5",
@@ -16,6 +18,7 @@
     "express": "^4.19.2",
     "express-validator": "^7.0.1",
     "heic-convert": "^2.1.0",
-    "node-localstorage": "^3.0.5"
+    "node-localstorage": "^3.0.5",
+    "typescript": "^5.4.5"
   }
 }

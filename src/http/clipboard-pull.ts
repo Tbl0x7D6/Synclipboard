@@ -36,5 +36,21 @@ async (req: Request, res: Response) => {
             res.status(500).send(error);
             return;
         }
+    } else if (platform == 'wayland') {
+        try {
+            if (extensionName === 'txt') {
+                const clipboard_data = fs.readFileSync('clipboard.txt', 'utf8');
+                res.json({mime: 'txt', data: clipboard_data});
+            } else if (extensionName === 'png') {
+                const clipboard_data = fs.readFileSync('clipboard.png', 'base64');
+                res.json({mime: 'png', data: clipboard_data});
+            } else {
+                throw new Error('Unsupported file mime');
+            }
+        } catch (error) {
+            console.log(error);
+            res.status(500).send(error);
+            return;
+        }
     }
 });
